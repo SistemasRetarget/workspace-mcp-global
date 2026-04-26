@@ -1,0 +1,343 @@
+{
+  "version": "1.0",
+  "description": "MCP Supervisor configuration for distributed subagent orchestration",
+  "supervisor": {
+    "name": "quality-gate-supervisor",
+    "role": "orchestrator",
+    "responsibilities": [
+      "coordinate subagents",
+      "manage workflows",
+      "enforce contracts",
+      "aggregate results"
+    ]
+  },
+  "subagents": [
+    {
+      "id": "reconnaissance",
+      "name": "Reconnaissance Subagent",
+      "model": "claude-opus",
+      "role": "Analyze origin sites and extract specifications",
+      "skills": [
+        "site-analysis",
+        "asset-discovery",
+        "content-mapping",
+        "platform-detect"
+      ],
+      "tools": [
+        "screenshot",
+        "lessons-search"
+      ],
+      "context_cache": {
+        "enabled": true,
+        "ttl_minutes": 60,
+        "key": "reconnaissance-context"
+      },
+      "max_iterations": 3,
+      "timeout_seconds": 300
+    },
+    {
+      "id": "layout-builder",
+      "name": "Layout Builder Subagent",
+      "model": "claude-opus",
+      "role": "Build and fix CSS/HTML layouts",
+      "skills": [
+        "css-fix",
+        "responsive-design",
+        "visual-alignment",
+        "component-build"
+      ],
+      "tools": [
+        "edit",
+        "write",
+        "screenshot",
+        "lessons-search"
+      ],
+      "context_cache": {
+        "enabled": true,
+        "ttl_minutes": 60,
+        "key": "layout-builder-context"
+      },
+      "max_iterations": 5,
+      "timeout_seconds": 600
+    },
+    {
+      "id": "content-loader",
+      "name": "Content Loader Subagent",
+      "model": "claude-opus",
+      "role": "Download and manage assets",
+      "skills": [
+        "asset-download",
+        "cdn-management",
+        "image-optimization",
+        "metadata-extract"
+      ],
+      "tools": [
+        "bash",
+        "write",
+        "lessons-search"
+      ],
+      "context_cache": {
+        "enabled": true,
+        "ttl_minutes": 120,
+        "key": "content-loader-context"
+      },
+      "max_iterations": 2,
+      "timeout_seconds": 900
+    },
+    {
+      "id": "qa-validator",
+      "name": "QA Validator Subagent",
+      "model": "claude-opus",
+      "role": "Validate visually and audit",
+      "skills": [
+        "screenshot-capture",
+        "visual-diff",
+        "lighthouse-audit",
+        "accessibility-check"
+      ],
+      "tools": [
+        "screenshot",
+        "visual-diff",
+        "validate",
+        "lessons-search"
+      ],
+      "context_cache": {
+        "enabled": true,
+        "ttl_minutes": 30,
+        "key": "qa-validator-context"
+      },
+      "max_iterations": 4,
+      "timeout_seconds": 300
+    },
+    {
+      "id": "deployment",
+      "name": "Deployment Subagent",
+      "model": "claude-opus",
+      "role": "Manage git and deployments",
+      "skills": [
+        "git-ops",
+        "railway-deploy",
+        "smoke-test",
+        "rollback"
+      ],
+      "tools": [
+        "bash",
+        "logs",
+        "railway-logs",
+        "lessons-search"
+      ],
+      "context_cache": {
+        "enabled": true,
+        "ttl_minutes": 60,
+        "key": "deployment-context"
+      },
+      "max_iterations": 3,
+      "timeout_seconds": 600
+    }
+  ],
+  "workflows": [
+    {
+      "name": "clone-site-complete",
+      "description": "Full site cloning workflow from analysis to deployment",
+      "steps": [
+        {
+          "step": 1,
+          "subagent": "reconnaissance",
+          "skill": "site-analysis",
+          "input": {
+            "url": "${origin_url}",
+            "depth": 2,
+            "extract_specs": true
+          },
+          "output": "site-recon.json",
+          "required": true
+        },
+        {
+          "step": 2,
+          "subagent": "content-loader",
+          "skill": "asset-download",
+          "input": {
+            "urls": "${site-recon.cdn_urls}",
+            "target_dir": "public/media",
+            "optimize": true
+          },
+          "output": "assets-manifest.json",
+          "required": true
+        },
+        {
+          "step": 3,
+          "subagent": "layout-builder",
+          "skill": "component-build",
+          "input": {
+            "sections": "${site-recon.landings}",
+            "brand": "${site-recon.brand}",
+            "reference_images": "${evidence_dir}"
+          },
+          "output": "src/components/sections/*.tsx",
+          "required": true,
+          "loop": {
+            "until": "all_sections_done",
+            "max_iterations": 8
+          }
+        },
+        {
+          "step": 4,
+          "subagent": "qa-validator",
+          "skill": "visual-diff",
+          "input": {
+            "sections": "${all_sections}",
+            "tolerance_percent": 2.0
+          },
+          "output": "validation-report.json",
+          "required": true,
+          "loop": {
+            "until": "all_pass",
+            "max_iterations": 4,
+            "feedback_to": "layout-builder"
+          }
+        },
+        {
+          "step": 5,
+          "subagent": "deployment",
+          "skill": "git-ops",
+          "input": {
+            "action": "commit",
+            "message": "feat: clone site complete",
+            "files": "${all_modified_files}"
+          },
+          "output": "commit-hash",
+          "required": true
+        },
+        {
+          "step": 6,
+          "subagent": "deployment",
+          "skill": "railway-deploy",
+          "input": {
+            "branch": "main",
+            "auto_push": true
+          },
+          "output": "deploy-status",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "iterate-section",
+      "description": "Iterate a single section until visual diff is acceptable",
+      "steps": [
+        {
+          "step": 1,
+          "subagent": "qa-validator",
+          "skill": "screenshot-capture",
+          "input": {
+            "section": "${section_id}",
+            "deploy_url": "${deploy_url}"
+          },
+          "output": "actual.png"
+        },
+        {
+          "step": 2,
+          "subagent": "qa-validator",
+          "skill": "visual-diff",
+          "input": {
+            "section": "${section_id}",
+            "tolerance_percent": 2.0
+          },
+          "output": "diff-report.json",
+          "loop": {
+            "condition": "diff_percent > tolerance",
+            "feedback_to": "layout-builder",
+            "max_iterations": 4
+          }
+        },
+        {
+          "step": 3,
+          "subagent": "layout-builder",
+          "skill": "css-fix",
+          "input": {
+            "section": "${section_id}",
+            "issue": "${diff_report.issues}",
+            "constraint": "${contract.constraints}"
+          },
+          "output": "modified-files"
+        },
+        {
+          "step": 4,
+          "subagent": "deployment",
+          "skill": "git-ops",
+          "input": {
+            "action": "commit",
+            "message": "fix(${section_id}): adjust layout based on visual diff"
+          },
+          "output": "commit-hash"
+        }
+      ]
+    }
+  ],
+  "context_caching": {
+    "enabled": true,
+    "strategy": "per-subagent",
+    "cache_blocks": [
+      {
+        "name": "methodology",
+        "content": "METODOLOGIA.md",
+        "ttl_minutes": 120,
+        "shared": true
+      },
+      {
+        "name": "antipatterns",
+        "content": "ANTIPATTERNS.md",
+        "ttl_minutes": 120,
+        "shared": true
+      },
+      {
+        "name": "project-contract",
+        "content": "contracts/${project}.json",
+        "ttl_minutes": 60,
+        "shared": true
+      },
+      {
+        "name": "lessons-kb",
+        "content": "lessons/lessons.jsonl",
+        "ttl_minutes": 30,
+        "shared": true
+      }
+    ]
+  },
+  "error_handling": {
+    "strategy": "escalate-and-retry",
+    "max_retries": 3,
+    "retry_delay_seconds": 5,
+    "escalation": {
+      "after_retries": 3,
+      "notify": "supervisor",
+      "action": "pause-workflow"
+    }
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics": [
+      "subagent-execution-time",
+      "success-rate",
+      "error-rate",
+      "context-cache-hit-rate",
+      "token-usage-per-subagent"
+    ],
+    "logging": {
+      "level": "info",
+      "format": "json",
+      "destination": "logs/subagents.jsonl"
+    }
+  },
+  "security": {
+    "contract_enforcement": true,
+    "validate_actions": true,
+    "allowed_tools_per_subagent": {
+      "reconnaissance": ["screenshot", "lessons-search"],
+      "layout-builder": ["edit", "write", "screenshot", "lessons-search"],
+      "content-loader": ["bash", "write", "lessons-search"],
+      "qa-validator": ["screenshot", "visual-diff", "validate", "lessons-search"],
+      "deployment": ["bash", "logs", "railway-logs", "lessons-search"]
+    }
+  }
+}
