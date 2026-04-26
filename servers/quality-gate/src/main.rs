@@ -23,9 +23,11 @@ use std::time::Instant;
 use serde_json::{json, Value};
 use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 
+mod tools;
+
 const PROTOCOL_VERSION: &str = "2024-11-05";
 const SERVER_NAME: &str = "quality-gate-server";
-const SERVER_VERSION: &str = "0.3.0";
+const SERVER_VERSION: &str = "0.3.1";
 
 // Filesystem layout for visual evidence + lessons KB.
 // Override via env: WORKSPACE_MCP_HOME (defaults to ~/Documents/workspace-mcp-global)
@@ -242,6 +244,70 @@ fn tool_definitions() -> Value {
                 },
                 "required": ["project"]
             }
+        },
+        {
+            "name": "session.start",
+            "description": "FAT TOOL: Load complete project context in one call. Returns contract, QA state, recent lessons, last commit, next task, and antipatterns.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project": { "type": "string", "description": "Project name (e.g. 'puebloladehesa-rediseno')" }
+                },
+                "required": ["project"]
+            }
+        },
+        {
+            "name": "session.report",
+            "description": "Generate structured markdown report of current project state.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project": { "type": "string" }
+                },
+                "required": ["project"]
+            }
+        },
+        {
+            "name": "iterate.section",
+            "description": "FAT TOOL: Autonomous loop — screenshot → diff → fix → commit → push until converged or stagnated. Returns iteration count, final diff, and commits.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project": { "type": "string", "description": "Project name" },
+                    "section": { "type": "string", "description": "Section ID to iterate (e.g. 'casas-grid')" },
+                    "deploy_url": { "type": "string", "description": "Deploy URL for screenshots" },
+                    "max_iterations": { "type": "integer", "description": "Default 999" },
+                    "tolerance_percent": { "type": "number", "description": "Visual diff tolerance. Default 2.0" }
+                },
+                "required": ["project", "section", "deploy_url"]
+            }
+        },
+        {
+            "name": "contract.validate-action",
+            "description": "Validate action against project contract before execution. Returns allow=false if out-of-scope.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project": { "type": "string" },
+                    "type": { "type": "string", "enum": ["edit", "write", "commit", "push", "deploy"] },
+                    "target": { "type": "string", "description": "File or section affected" },
+                    "details": { "type": "string", "description": "Action description" }
+                },
+                "required": ["type"]
+            }
+        },
+        {
+            "name": "contract.propose-change",
+            "description": "Queue out-of-scope change proposal for human approval.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "project": { "type": "string" },
+                    "reason": { "type": "string", "description": "Why the change is needed" },
+                    "diff": { "type": "string", "description": "What would be added/changed" }
+                },
+                "required": ["reason"]
+            }
         }
     ])
 }
@@ -256,6 +322,8 @@ fn handle_tool_call(id: Value, params: Option<&Value>) -> Value {
     let tool = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
     let args = params.get("arguments").cloned().unwrap_or(json!({}));
 
+    let workspace_root = workspace_root();
+    
     match tool {
         "list-projects" => ok_json(id, list_projects_tool()),
         "validate" => validate_tool(id, &args),
@@ -267,6 +335,14 @@ fn handle_tool_call(id: Value, params: Option<&Value>) -> Value {
         "visual-diff" => visual_diff_tool(id, &args),
         "lessons-log" => lessons_log_tool(id, &args),
         "lessons-search" => lessons_search_tool(id, &args),
+        
+        // FAT TOOLS — Autonomous supervisor
+        "session.start" => tools::session::session_start_tool(id, &args, &workspace_root),
+        "session.report" => tools::session::session_report_tool(id, &args, &workspace_root),
+        "iterate.section" => tools::iterate::iterate_section_tool(id, &args),
+        "contract.validate-action" => tools::contract::validate_action_tool(id, &args),
+        "contract.propose-change" => tools::contract::propose_change_tool(id, &args),
+        
         _ => tool_error(id, &format!("Unknown tool: {}", tool)),
     }
 }
