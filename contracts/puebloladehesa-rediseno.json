@@ -1,0 +1,148 @@
+{
+  "project": "puebloladehesa-rediseno",
+  "version": 1,
+  "created": "2026-04-25T02:06:00-04:00",
+  "owner": "sistemas@retarget.cl",
+  "last_updated": "2026-04-25T23:56:00-04:00",
+  
+  "stack": {
+    "frontend": "Next.js 15",
+    "cms": "Payload CMS 3",
+    "hosting": "Railway",
+    "db": "Postgres",
+    "styling": "Tailwind CSS",
+    "locked": true
+  },
+  
+  "design": {
+    "reference_url": "https://puebloladehesa.cl",
+    "deploy_url": "https://puebloladehesa-web-production.up.railway.app",
+    "tolerance_percent": 2.0,
+    "responsive": ["mobile", "tablet", "desktop"],
+    "brand": {
+      "bg": "#F5EFE0",
+      "ink": "#2A2A2A",
+      "accent_orange": "#D97757",
+      "accent_teal": "#4A9B8E"
+    }
+  },
+  
+  "sections": [
+    {
+      "id": "header",
+      "status": "DONE",
+      "commit": "f46e326",
+      "notes": "Sticky transparent→cream, logo+nav visibles",
+      "constraints": [
+        "sticky: transparente arriba → bg-brand-bg al scroll",
+        "logo filter: invert(1) cuando transparente, normal cuando scrolled",
+        "NO fondo negro nunca",
+        "nav links visibles en ambos estados"
+      ]
+    },
+    {
+      "id": "hero",
+      "status": "DONE",
+      "commit": "f46e326",
+      "diff_percent": 41.0,
+      "notes": "Cordillera visible, título centrado, gradiente alineado",
+      "constraints": [
+        "imagen: amplios_horizontes_1.webp",
+        "altura: h-[90vh] min-h-[600px]",
+        "gradiente: from-black/30 via-black/20 to-black/50",
+        "negative margin: -mt-20 lg:-mt-24 para overlay con header",
+        "cookie banner oculto con ?screenshot=1"
+      ]
+    },
+    {
+      "id": "intro-paragraph",
+      "status": "DONE",
+      "notes": "Texto alineado con producción",
+      "content": "Arriendo de casas amobladas inmersas en la naturaleza con vistas a la cordillera y al valle de la Dehesa."
+    },
+    {
+      "id": "casas-grid",
+      "status": "PENDING",
+      "max_iterations": 999,
+      "notes": "Prod usa /estadias, QA usa /casas — decisión pendiente",
+      "constraints": [
+        "grid responsive: 1 col mobile, 2 cols tablet, 3 cols desktop",
+        "cards con imagen + título + descripción corta",
+        "hover effect sutil",
+        "link a detalle de cada casa"
+      ]
+    },
+    {
+      "id": "experiencias",
+      "status": "PENDING",
+      "max_iterations": 999
+    },
+    {
+      "id": "testimonios",
+      "status": "PENDING",
+      "max_iterations": 999
+    },
+    {
+      "id": "faq",
+      "status": "PENDING",
+      "max_iterations": 999
+    },
+    {
+      "id": "footer",
+      "status": "PENDING",
+      "max_iterations": 999
+    }
+  ],
+  
+  "constraints": [
+    "header sticky: transparente arriba → crema al scroll (NO negro)",
+    "todas las imágenes via next/image con sizes apropiados",
+    "un solo contenedor GTM, lazyOnload",
+    "no scripts duplicados",
+    "no overlays oscuros (bg-black/40) excepto en hero con gradiente sutil",
+    "estructura + legibilidad > pixel-perfect",
+    "pragmático: si una sección no logra fidelidad visual, basta con layout correcto"
+  ],
+  
+  "out_of_scope": [
+    "ecommerce / carrito de compras",
+    "multi-idioma (solo español)",
+    "auth de usuarios finales",
+    "blog (va en news-ai-cms, no aquí)",
+    "integraciones de pago",
+    "sistema de reservas complejo"
+  ],
+  
+  "success_criteria": {
+    "all_sections_status": "DONE",
+    "visual_diff_max": 2.0,
+    "npm_audit_critical": 0,
+    "lighthouse_lcp_mobile": 2.5,
+    "lighthouse_tbt": 200,
+    "no_secrets_exposed": true
+  },
+  
+  "antipatterns_ref": "ANTIPATTERNS.md",
+  "lessons_ref": "~/Documents/workspace-mcp-global/lessons/lessons.jsonl",
+  
+  "deployment": {
+    "platform": "Railway",
+    "auto_deploy": true,
+    "branch": "main",
+    "build_time_avg_seconds": 180,
+    "env_vars_required": [
+      "DATABASE_URL",
+      "PAYLOAD_SECRET",
+      "NEXT_PUBLIC_SERVER_URL"
+    ]
+  },
+  
+  "current_state": {
+    "last_commit": "f46e326",
+    "last_deploy": "2026-04-25T02:06:00-04:00",
+    "sections_done": 3,
+    "sections_pending": 5,
+    "total_iterations": 8,
+    "lessons_logged": 1
+  }
+}

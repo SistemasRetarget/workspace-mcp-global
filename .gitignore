@@ -1,0 +1,35 @@
+# Rust
+target/
+Cargo.lock
+*.rlib
+*.rmeta
+
+# Node
+node_modules/
+*.log
+.npm
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.local
+*.key
+*.pem
+secrets/
+
+# Build artifacts
+dist/
+build/
+
+# MCP runtime
+*.sock

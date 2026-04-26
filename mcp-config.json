@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "quality-gate": {
+      "command": "/Users/spam11/Documents/workspace-mcp-global/servers/quality-gate/target/release/quality-gate-server",
+      "args": [],
+      "env": {
+        "PATH": "/Users/spam11/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        "RETARGET_WORKSPACE": "/Users/spam11/Desktop/RETARGET-WORKSPACE/PROJECTS",
+        "WORKSPACE_MCP_HOME": "/Users/spam11/Documents/workspace-mcp-global"
+      }
+    }
+  }
+}
