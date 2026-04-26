@@ -3,7 +3,7 @@
 //! FAT TOOL que ejecuta el loop completo: screenshot → diff → fix → commit → push → wait → repeat
 
 use serde_json::{json, Value};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 use std::thread;
 use std::time::Duration;
@@ -44,6 +44,7 @@ pub fn iterate_section_tool(id: Value, args: &Value) -> Value {
     }
 }
 
+#[allow(dead_code)]
 struct IterationResult {
     iteration: usize,
     diff_percent: f64,

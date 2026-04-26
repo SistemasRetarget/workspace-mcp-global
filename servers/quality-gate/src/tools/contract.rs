@@ -98,7 +98,7 @@ struct ValidationResult {
 }
 
 fn validate_file_modification(
-    target: &str,
+    _target: &str,
     details: &str,
     contract: Option<&Value>,
 ) -> ValidationResult {

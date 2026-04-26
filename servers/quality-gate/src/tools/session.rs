@@ -236,7 +236,7 @@ pub fn session_report_tool(id: Value, args: &Value, workspace_root: &Path) -> Va
     ok_text(id, &report, false)
 }
 
-fn generate_markdown_report(project: &str, contract: &Value, qa_state: &Value, last_commit: &str) -> String {
+fn generate_markdown_report(project: &str, contract: &Value, _qa_state: &Value, last_commit: &str) -> String {
     let mut md = String::new();
     
     md.push_str(&format!("# Reporte de Progreso: {}\n\n", project));
