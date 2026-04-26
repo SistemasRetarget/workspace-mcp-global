@@ -1,0 +1,252 @@
+{
+  "version": "1.0",
+  "description": "Prompt caching configuration for MCP supervisor and subagents",
+  "cache_strategy": "multi-level",
+  "total_cached_tokens_estimate": 8500,
+  "estimated_token_savings_percent": 75,
+  "cache_blocks": [
+    {
+      "id": "system-base",
+      "name": "Base System Prompt",
+      "file": ".claude/prompts/system-base.md",
+      "ttl_minutes": 60,
+      "shared": true,
+      "size_tokens_estimate": 1200,
+      "usage_frequency": "every-turn",
+      "priority": "critical"
+    },
+    {
+      "id": "system-reconnaissance",
+      "name": "Reconnaissance Subagent System Prompt",
+      "content": "You are the Reconnaissance Subagent. Role: Analyze origin sites and extract specifications...",
+      "ttl_minutes": 60,
+      "shared": false,
+      "size_tokens_estimate": 800,
+      "usage_frequency": "phase-1",
+      "priority": "high"
+    },
+    {
+      "id": "system-layout-builder",
+      "name": "Layout Builder Subagent System Prompt",
+      "content": "You are the Layout Builder Subagent. Role: Build and fix CSS/HTML layouts...",
+      "ttl_minutes": 60,
+      "shared": false,
+      "size_tokens_estimate": 800,
+      "usage_frequency": "phase-3,5,6",
+      "priority": "high"
+    },
+    {
+      "id": "system-qa-validator",
+      "name": "QA Validator Subagent System Prompt",
+      "content": "You are the QA Validator Subagent. Role: Validate visually and audit quality...",
+      "ttl_minutes": 60,
+      "shared": false,
+      "size_tokens_estimate": 700,
+      "usage_frequency": "phase-4",
+      "priority": "high"
+    },
+    {
+      "id": "system-deployment",
+      "name": "Deployment Subagent System Prompt",
+      "content": "You are the Deployment Subagent. Role: Manage git operations and deployments...",
+      "ttl_minutes": 60,
+      "shared": false,
+      "size_tokens_estimate": 700,
+      "usage_frequency": "phase-7",
+      "priority": "high"
+    },
+    {
+      "id": "context-methodology",
+      "name": "Methodology: Clone-Site",
+      "file": "METODOLOGIA.md",
+      "ttl_minutes": 120,
+      "shared": true,
+      "size_tokens_estimate": 2500,
+      "usage_frequency": "every-workflow",
+      "priority": "critical"
+    },
+    {
+      "id": "context-contract",
+      "name": "Project Contract",
+      "file": "contracts/${project}.json",
+      "ttl_minutes": 60,
+      "shared": true,
+      "size_tokens_estimate": 800,
+      "usage_frequency": "every-turn",
+      "priority": "critical"
+    },
+    {
+      "id": "context-lessons",
+      "name": "Lessons KB (Last 50 entries)",
+      "file": "lessons/lessons.jsonl",
+      "ttl_minutes": 30,
+      "shared": true,
+      "size_tokens_estimate": 3000,
+      "usage_frequency": "every-turn",
+      "priority": "high"
+    },
+    {
+      "id": "context-antipatterns",
+      "name": "Antipatterns",
+      "file": "ANTIPATTERNS.md",
+      "ttl_minutes": 120,
+      "shared": true,
+      "size_tokens_estimate": 1200,
+      "usage_frequency": "every-workflow",
+      "priority": "medium"
+    },
+    {
+      "id": "task-clone-site-complete",
+      "name": "Task: Clone Site Complete",
+      "file": ".claude/prompts/task-clone-site-complete.md",
+      "ttl_minutes": 30,
+      "shared": true,
+      "size_tokens_estimate": 1800,
+      "usage_frequency": "workflow-start",
+      "priority": "high"
+    },
+    {
+      "id": "task-iterate-section",
+      "name": "Task: Iterate Section",
+      "file": ".claude/prompts/task-iterate-section.md",
+      "ttl_minutes": 30,
+      "shared": true,
+      "size_tokens_estimate": 1500,
+      "usage_frequency": "per-section",
+      "priority": "high"
+    }
+  ],
+  "cache_groups": [
+    {
+      "name": "startup",
+      "description": "Loaded at session start",
+      "blocks": [
+        "system-base",
+        "context-methodology",
+        "context-contract",
+        "context-lessons"
+      ],
+      "total_tokens": 7500,
+      "ttl_minutes": 60
+    },
+    {
+      "name": "phase-1-reconnaissance",
+      "description": "Loaded for Phase 1",
+      "blocks": [
+        "system-reconnaissance",
+        "task-clone-site-complete"
+      ],
+      "total_tokens": 2600,
+      "ttl_minutes": 60
+    },
+    {
+      "name": "phase-3-layout-build",
+      "description": "Loaded for Phase 3",
+      "blocks": [
+        "system-layout-builder",
+        "task-iterate-section"
+      ],
+      "total_tokens": 2300,
+      "ttl_minutes": 30
+    },
+    {
+      "name": "phase-4-qa-validation",
+      "description": "Loaded for Phase 4",
+      "blocks": [
+        "system-qa-validator",
+        "task-iterate-section"
+      ],
+      "total_tokens": 2200,
+      "ttl_minutes": 30
+    },
+    {
+      "name": "phase-7-deployment",
+      "description": "Loaded for Phase 7",
+      "blocks": [
+        "system-deployment"
+      ],
+      "total_tokens": 700,
+      "ttl_minutes": 60
+    }
+  ],
+  "cache_invalidation": {
+    "triggers": [
+      {
+        "event": "contract-update",
+        "invalidate": ["context-contract"],
+        "action": "immediate"
+      },
+      {
+        "event": "methodology-update",
+        "invalidate": ["context-methodology"],
+        "action": "immediate"
+      },
+      {
+        "event": "lessons-kb-update",
+        "invalidate": ["context-lessons"],
+        "action": "immediate"
+      },
+      {
+        "event": "ttl-expiry",
+        "invalidate": "automatic",
+        "action": "on-next-use"
+      },
+      {
+        "event": "project-switch",
+        "invalidate": ["context-contract"],
+        "action": "immediate"
+      }
+    ]
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics": [
+      "cache_hit_rate",
+      "cache_miss_rate",
+      "tokens_saved_per_turn",
+      "tokens_saved_per_day",
+      "cost_reduction_percent",
+      "average_response_time",
+      "cache_miss_reasons"
+    ],
+    "log_file": "logs/cache-metrics.jsonl",
+    "report_frequency": "daily"
+  },
+  "performance_targets": {
+    "cache_hit_rate_percent": 75,
+    "tokens_saved_per_turn": 5000,
+    "cost_reduction_percent": 35,
+    "average_response_time_seconds": 2.5
+  },
+  "usage_examples": [
+    {
+      "workflow": "clone-site-complete",
+      "cache_groups": ["startup", "phase-1-reconnaissance", "phase-3-layout-build", "phase-4-qa-validation", "phase-7-deployment"],
+      "estimated_cache_hits": "85%",
+      "estimated_tokens_saved": "45000"
+    },
+    {
+      "workflow": "iterate-section",
+      "cache_groups": ["startup", "phase-3-layout-build", "phase-4-qa-validation"],
+      "estimated_cache_hits": "80%",
+      "estimated_tokens_saved": "6000-per-iteration"
+    },
+    {
+      "workflow": "fix-css-issue",
+      "cache_groups": ["startup", "phase-3-layout-build"],
+      "estimated_cache_hits": "75%",
+      "estimated_tokens_saved": "5000"
+    }
+  ],
+  "best_practices": [
+    "Load startup cache group at session start",
+    "Load phase-specific cache groups before each phase",
+    "Monitor cache hit rate (target: > 75%)",
+    "Invalidate contract immediately on update",
+    "Keep lessons KB fresh (30min TTL)",
+    "Batch context blocks together",
+    "Use shared blocks across subagents",
+    "Track token savings daily",
+    "Adjust TTLs based on change frequency"
+  ]
+}
