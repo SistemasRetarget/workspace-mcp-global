@@ -429,7 +429,7 @@ fn tool_definitions() -> Value {
         {
             "name": "ticket_close",
             "description": "Close a ticket: sets estado to Listo (or custom), writes fecha_cierre=today, \
-                            and saves the vitácora/lesson text.",
+                            and saves the bitácora/lesson text.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -437,7 +437,7 @@ fn tool_definitions() -> Value {
                         "type": "string",
                         "description": "Ticket ID, e.g. T-14"
                     },
-                    "vitacora": {
+                    "bitacora": {
                         "type": "string",
                         "description": "Summary of what was done, lessons learned"
                     },

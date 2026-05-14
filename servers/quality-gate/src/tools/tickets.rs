@@ -82,7 +82,7 @@ for r in rows:
 ticket_id = f'T-{{max_num + 1}}'
 today = date.today().isoformat()
 
-# Append new row: Ticket | Estado | Sitio | Origen | Descripción | F.Apertura | F.Cierre | Verificado | Vitácora
+# Append new row: Ticket | Estado | Sitio | Origen | Descripción | F.Apertura | F.Cierre | Verificado | Bitácora
 new_row = [ticket_id, 'Pendiente', '{site}', '{origen}', '{desc}', today, '', '', '']
 
 sheet.values().append(
@@ -126,14 +126,14 @@ print(json.dumps({{'ticket_id': ticket_id, 'row': row_num, 'today': today}}))
 // ─── Tool: ticket_close ───────────────────────────────────────────────────────
 
 /// Closes a ticket: sets estado=Listo, fecha_cierre=today, writes vitácora.
-/// Args: ticket_id (str, e.g. "T-14"), vitacora (str), estado (str, default "Listo")
+/// Args: ticket_id (str, e.g. "T-14"), bitacora (str), estado (str, default "Listo")
 pub fn ticket_close_tool(id: Value, args: &Value) -> Value {
     let ticket_id = match args.get("ticket_id").and_then(|v| v.as_str()) {
         Some(t) => t,
         None => return tool_error(id, "Missing argument: ticket_id"),
     };
-    let vitacora = args
-        .get("vitacora")
+    let bitacora = args
+        .get("bitacora")
         .and_then(|v| v.as_str())
         .unwrap_or("");
     let estado = args
@@ -142,7 +142,7 @@ pub fn ticket_close_tool(id: Value, args: &Value) -> Value {
         .unwrap_or("Listo");
 
     let tid_e = ticket_id.replace('\'', "\\'");
-    let vit_e = vitacora.replace('\'', "\\'");
+    let vit_e = bitacora.replace('\'', "\\'");
     let est_e = estado.replace('\'', "\\'");
 
     let script = format!(
@@ -178,7 +178,7 @@ if row_index is None:
 
 today = date.today().isoformat()
 
-# Col B (estado) = index 2, Col G (F.Cierre) = index 7, Col I (Vitácora) = index 9
+# Col B (estado) = index 2, Col G (F.Cierre) = index 7, Col I (Bitácora) = index 9
 # Update estado (col B)
 sheet.values().update(
     spreadsheetId='{sid}',
@@ -195,7 +195,7 @@ sheet.values().update(
     body={{'values': [[today]]}}
 ).execute()
 
-# Update Vitácora (col I)
+# Update Bitácora (col I)
 if '{vit}':
     sheet.values().update(
         spreadsheetId='{sid}',
