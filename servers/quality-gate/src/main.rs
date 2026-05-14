@@ -246,6 +246,23 @@ fn tool_definitions() -> Value {
             }
         },
         {
+            "name": "wait-for-deploy",
+            "description": "Poll a deploy URL until it returns HTTP 200 (and optionally contains a marker text). \
+                            Blocks the MCP call up to max_seconds (default 50) and returns the final state. \
+                            If still waiting after max_seconds, returns state='waiting' so the caller can re-invoke. \
+                            Use this AFTER `git push` to cleanly wait for Railway/Vercel/Netlify rebuilds without user-side polling loops.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "url":            { "type": "string", "description": "Full URL to poll (https://...)." },
+                    "content_match":  { "type": "string", "description": "Optional substring that must appear in the HTML body to consider deploy ready. If omitted, HTTP 200 is enough." },
+                    "max_seconds":    { "type": "integer", "description": "Max time to block this MCP call. Default 50. Hard cap 90." },
+                    "interval_seconds": { "type": "integer", "description": "Poll interval. Default 8." }
+                },
+                "required": ["url"]
+            }
+        },
+        {
             "name": "session.start",
             "description": "FAT TOOL: Load complete project context in one call. Returns contract, QA state, recent lessons, last commit, next task, and antipatterns.",
             "inputSchema": {
@@ -308,6 +325,145 @@ fn tool_definitions() -> Value {
                 },
                 "required": ["reason"]
             }
+        },
+        {
+            "name": "wp_redirect_list",
+            "description": "List all redirects registered in the Redirection plugin for a WordPress site. \
+                            Returns ID, status (enabled/disabled), source slug and destination URL for each redirect.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "site": {
+                        "type": "string",
+                        "description": "Site key: puyehue | tac | futangue",
+                        "enum": ["puyehue", "tac", "futangue"]
+                    }
+                },
+                "required": ["site"]
+            }
+        },
+        {
+            "name": "wp_redirect_disable",
+            "description": "Disable an active redirect by ID on a WordPress site (Redirection plugin). \
+                            Use wp_redirect_list first to find the correct ID.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "site": {
+                        "type": "string",
+                        "description": "Site key: puyehue | tac | futangue",
+                        "enum": ["puyehue", "tac", "futangue"]
+                    },
+                    "redirect_id": {
+                        "type": "integer",
+                        "description": "Numeric ID of the redirect to disable."
+                    }
+                },
+                "required": ["site", "redirect_id"]
+            }
+        },
+        {
+            "name": "wp_redirect_create",
+            "description": "Create a 301 redirect on a WordPress site (Redirection plugin). \
+                            Maps a source slug to a destination URL.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "site": {
+                        "type": "string",
+                        "description": "Site key: puyehue | tac | futangue",
+                        "enum": ["puyehue", "tac", "futangue"]
+                    },
+                    "slug": {
+                        "type": "string",
+                        "description": "Source path, e.g. /promo-verano/ (include leading slash)"
+                    },
+                    "destination": {
+                        "type": "string",
+                        "description": "Destination full URL, e.g. https://puyehue.cl/"
+                    }
+                },
+                "required": ["site", "slug", "destination"]
+            }
+        },
+        {
+            "name": "wp_cache_purge",
+            "description": "Purge the cache of a WordPress site. Tries W3 Total Cache REST API first, \
+                            then Kinsta cache endpoint. Returns success/failure and the strategy used.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "site": {
+                        "type": "string",
+                        "description": "Site key: puyehue | tac | futangue",
+                        "enum": ["puyehue", "tac", "futangue"]
+                    }
+                },
+                "required": ["site"]
+            }
+        },
+        // ── Tickets ──────────────────────────────────────────────────────────
+        {
+            "name": "ticket_create",
+            "description": "Open a new ticket row in the Retarget Gantt Sheet. \
+                            Returns the assigned T-XX id and the row number.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "descripcion": {
+                        "type": "string",
+                        "description": "Short description of the task or request"
+                    },
+                    "sitio": {
+                        "type": "string",
+                        "description": "Affected site (e.g. puyehue.cl, termasaguascalientes.cl)"
+                    },
+                    "origen": {
+                        "type": "string",
+                        "description": "Origin of the request (e.g. Email Leig, Email Mauricio, Manual)"
+                    }
+                },
+                "required": ["descripcion"]
+            }
+        },
+        {
+            "name": "ticket_close",
+            "description": "Close a ticket: sets estado to Listo (or custom), writes fecha_cierre=today, \
+                            and saves the vitácora/lesson text.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "ticket_id": {
+                        "type": "string",
+                        "description": "Ticket ID, e.g. T-14"
+                    },
+                    "vitacora": {
+                        "type": "string",
+                        "description": "Summary of what was done, lessons learned"
+                    },
+                    "estado": {
+                        "type": "string",
+                        "description": "Final status (default: Listo). Use Eliminado, Bloqueado if needed.",
+                        "enum": ["Listo", "Eliminado", "Bloqueado", "En progreso"]
+                    }
+                },
+                "required": ["ticket_id"]
+            }
+        },
+        {
+            "name": "ticket_search",
+            "description": "Full-text search across all Gantt ticket rows. \
+                            Searches all columns case-insensitively.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search term — matches any column (ticket ID, site, description, etc.)"
+                    }
+                },
+                "required": ["query"]
+            }
         }
     ])
 }
@@ -335,6 +491,7 @@ fn handle_tool_call(id: Value, params: Option<&Value>) -> Value {
         "visual-diff" => visual_diff_tool(id, &args),
         "lessons-log" => lessons_log_tool(id, &args),
         "lessons-search" => lessons_search_tool(id, &args),
+        "wait-for-deploy" => wait_for_deploy_tool(id, &args),
         
         // FAT TOOLS — Autonomous supervisor
         "session.start" => tools::session::session_start_tool(id, &args, &workspace_root),
@@ -342,7 +499,18 @@ fn handle_tool_call(id: Value, params: Option<&Value>) -> Value {
         "iterate.section" => tools::iterate::iterate_section_tool(id, &args),
         "contract.validate-action" => tools::contract::validate_action_tool(id, &args),
         "contract.propose-change" => tools::contract::propose_change_tool(id, &args),
-        
+
+        // WordPress tools
+        "wp_redirect_list" => tools::wp::wp_redirect_list_tool(id, &args),
+        "wp_redirect_disable" => tools::wp::wp_redirect_disable_tool(id, &args),
+        "wp_redirect_create" => tools::wp::wp_redirect_create_tool(id, &args),
+        "wp_cache_purge" => tools::wp::wp_cache_purge_tool(id, &args),
+
+        // Tickets tools
+        "ticket_create" => tools::tickets::ticket_create_tool(id, &args),
+        "ticket_close" => tools::tickets::ticket_close_tool(id, &args),
+        "ticket_search" => tools::tickets::ticket_search_tool(id, &args),
+
         _ => tool_error(id, &format!("Unknown tool: {}", tool)),
     }
 }
@@ -706,6 +874,123 @@ fn chrono_like_now() -> String {
         .unwrap_or(0);
     // ISO-like: just emit the unix epoch — easy to grep, easy to sort.
     format!("ts={}", secs)
+}
+
+// ─── Tool: wait-for-deploy ──────────────────────────────────────────────────
+//
+// Polls a URL until it returns HTTP 200 (and optionally contains a marker substring).
+// Blocks the MCP request for up to max_seconds (default 50, hard cap 90), then returns
+// state='ready' | 'waiting' | 'timeout'. If 'waiting', the caller should re-invoke.
+//
+// Implementation: shells out to /usr/bin/curl. No extra dependencies required.
+
+fn wait_for_deploy_tool(id: Value, args: &Value) -> Value {
+    let url = match args.get("url").and_then(|v| v.as_str()) {
+        Some(s) => s.to_string(),
+        None => return tool_error(id, "Missing argument: url"),
+    };
+    let content_match = args
+        .get("content_match")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let max_seconds = args
+        .get("max_seconds")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(50)
+        .clamp(5, 90) as u64;
+    let interval_seconds = args
+        .get("interval_seconds")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(8)
+        .clamp(2, 30) as u64;
+
+    let start = std::time::Instant::now();
+    let mut attempts = 0u32;
+    let mut last_http = String::from("000");
+    loop {
+        attempts += 1;
+        let elapsed = start.elapsed().as_secs();
+        if elapsed >= max_seconds {
+            let payload = json!({
+                "state": "waiting",
+                "elapsed": elapsed,
+                "attempts": attempts,
+                "last_http": last_http,
+                "url": url,
+                "hint": "Re-invoke wait-for-deploy if you want to keep waiting."
+            });
+            return ok_text(id, &payload.to_string(), false);
+        }
+
+        // Cache-bust each request
+        let cb_url = if url.contains('?') {
+            format!("{}&_cb={}", url, elapsed)
+        } else {
+            format!("{}?_cb={}", url, elapsed)
+        };
+
+        // Single curl that captures both HTTP code and body.
+        // -s silent, -L follow redirects, -m timeout per request, -w write code on stderr-like via -o /tmp/body.
+        let body_path = std::env::temp_dir().join(format!(
+            "qg-wait-{}-{}.html",
+            std::process::id(),
+            attempts
+        ));
+        let body_path_str = body_path.to_string_lossy().to_string();
+
+        let out = std::process::Command::new("/usr/bin/curl")
+            .args([
+                "-sSL",
+                "-m",
+                "10",
+                "-o",
+                &body_path_str,
+                "-w",
+                "%{http_code}",
+                &cb_url,
+            ])
+            .output();
+
+        let (code, body) = match out {
+            Ok(o) => {
+                let code = String::from_utf8_lossy(&o.stdout).trim().to_string();
+                let body = std::fs::read_to_string(&body_path).unwrap_or_default();
+                let _ = std::fs::remove_file(&body_path);
+                (code, body)
+            }
+            Err(e) => {
+                let _ = std::fs::remove_file(&body_path);
+                (format!("ERR:{}", e), String::new())
+            }
+        };
+        last_http = code.clone();
+
+        if code == "200" {
+            let matched = match &content_match {
+                Some(m) => body.contains(m),
+                None => true,
+            };
+            if matched {
+                let payload = json!({
+                    "state": "ready",
+                    "elapsed": elapsed,
+                    "attempts": attempts,
+                    "http": code,
+                    "url": url,
+                    "match": content_match,
+                });
+                return ok_text(id, &payload.to_string(), false);
+            }
+        }
+
+        // Sleep before next attempt — but never overshoot max_seconds.
+        let remaining = max_seconds.saturating_sub(start.elapsed().as_secs());
+        let sleep_for = interval_seconds.min(remaining);
+        if sleep_for == 0 {
+            continue;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(sleep_for));
+    }
 }
 
 // ─── Workspace & project resolution ─────────────────────────────────────────
